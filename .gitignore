@@ -9,6 +9,9 @@ engine/build/
 frontend/public/engine.js
 frontend/public/engine.wasm
 
+# Test robots (not for public repo)
+robots_test/
+
 # OS
 .DS_Store
 Thumbs.db
