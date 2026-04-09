@@ -1,4 +1,5 @@
 /// <reference lib="WebWorker" />
+/// <reference types="vite/client" />
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -21,10 +22,11 @@ interface Frame {
 let Module: any = null
 
 async function loadEngine(): Promise<void> {
-  const src = await fetch('/engine.js').then(r => r.text())
+  const base = import.meta.env.BASE_URL
+  const src = await fetch(base + 'engine.js').then(r => r.text())
   ;(0, eval)(src)
   Module = await (self as any)['CrobotsEngine']({
-    locateFile: (path: string) => `/${path}`,
+    locateFile: (path: string) => base + path,
   })
 }
 
