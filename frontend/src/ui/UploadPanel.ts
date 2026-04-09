@@ -344,7 +344,7 @@ export class UploadPanel {
     // Drop text
     const dropText = document.createElement('div')
     dropText.className = 'slot-drop-text'
-    dropText.textContent = 'Drop .r file or click'
+    dropText.textContent = 'Drop .r / .c file or click'
     slot.appendChild(dropText)
 
     // Status badge
