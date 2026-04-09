@@ -4,7 +4,7 @@ import { ControlsPanel } from './ui/ControlsPanel'
 import { compileRobot, runBattle } from './engine/wasm-bridge'
 
 const MIN_CANVAS = 600  // minimum square side in CSS pixels
-const APP_GAP = 8       // matches gap + padding in #app CSS (px)
+const APP_GAP = 2       // matches gap + padding in #app CSS (px)
 
 // Setup canvas — always a square
 const canvas = document.getElementById('battle-canvas') as HTMLCanvasElement

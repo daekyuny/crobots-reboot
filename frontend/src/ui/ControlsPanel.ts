@@ -179,7 +179,7 @@ export class ControlsPanel {
         cursor: pointer;
       }
       .cycle-display, .frame-display {
-        font-size: 11px;
+        font-size: 13px;
         color: #888;
         white-space: nowrap;
         min-width: 80px;
@@ -189,8 +189,8 @@ export class ControlsPanel {
         gap: 4px;
       }
       .speed-btn {
-        font-size: 10px !important;
-        padding: 2px 6px !important;
+        font-size: 12px !important;
+        padding: 2px 8px !important;
       }
       .hud-row {
         display: flex;
@@ -209,19 +209,19 @@ export class ControlsPanel {
         border-right: none;
       }
       .hud-color {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         flex-shrink: 0;
       }
       .hud-name {
-        font-size: 11px;
+        font-size: 13px;
         font-weight: bold;
         min-width: 60px;
       }
       .hud-damage-bar-bg {
         width: 60px;
-        height: 6px;
+        height: 7px;
         background: rgba(60, 60, 80, 0.6);
         border-radius: 3px;
         overflow: hidden;
@@ -234,12 +234,12 @@ export class ControlsPanel {
         border-radius: 3px;
       }
       .hud-stat {
-        font-size: 10px;
+        font-size: 12px;
         color: #888;
         white-space: nowrap;
       }
       .hud-status {
-        font-size: 9px;
+        font-size: 11px;
         letter-spacing: 1px;
         font-weight: bold;
       }

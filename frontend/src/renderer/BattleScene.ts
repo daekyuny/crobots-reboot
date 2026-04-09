@@ -34,7 +34,7 @@ export class BattleScene {
     // up=(0,0,-1) avoids the degenerate case of looking straight down with
     // the default up=(0,1,0) which would be antiparallel to the view direction.
     // PAD gives breathing room so the border is never right at the clip edge.
-    const PAD = 60;
+    const PAD = 25;
     const half = 500 + PAD;
     this.camera = new THREE.OrthographicCamera(
       -half, half, half, -half, 0.1, 2000
