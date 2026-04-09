@@ -1,5 +1,5 @@
-const SLOT_COLORS = ['#00ffff', '#ff6600']
-const SLOT_LABELS = ['CYAN', 'ORANGE']
+const SLOT_COLORS = ['#00ffff', '#ff6600', '#00ff88', '#ff00ff']
+const SLOT_LABELS = ['CYAN', 'ORANGE', 'GREEN', 'MAGENTA']
 
 type SlotStatus = 'idle' | 'compiling' | 'ready' | 'error'
 
@@ -17,7 +17,10 @@ export class UploadPanel {
   private slots: Slot[] = [
     { source: null, name: null, status: 'idle', error: null },
     { source: null, name: null, status: 'idle', error: null },
+    { source: null, name: null, status: 'idle', error: null },
+    { source: null, name: null, status: 'idle', error: null },
   ]
+  private activeCount = 2
   private battleCallback: BattleCallback | null = null
   private compileCallback: CompileCallback | null = null
   private errorModal!: HTMLElement
@@ -26,6 +29,7 @@ export class UploadPanel {
   private battleButton!: HTMLButtonElement
   private container!: HTMLElement
   private slotElements: HTMLElement[] = []
+  private countBtns: HTMLButtonElement[] = []
   private statusText!: HTMLElement
 
   onBattle(cb: BattleCallback): void {
@@ -172,6 +176,35 @@ export class UploadPanel {
         font-size: 11px;
         min-height: 16px;
       }
+      .robot-count-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #888;
+      }
+      .count-btn {
+        background: rgba(40, 40, 60, 0.8);
+        color: #aaa;
+        border: 1px solid rgba(100, 100, 140, 0.3);
+        border-radius: 4px;
+        padding: 3px 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .count-btn:hover {
+        background: rgba(60, 60, 90, 0.8);
+      }
+      .count-btn.active {
+        background: rgba(0, 255, 136, 0.15);
+        border-color: #00ff88;
+        color: #00ff88;
+      }
+      .upload-slot.hidden {
+        display: none;
+      }
       .upload-slot input[type="file"] {
         display: none;
       }
@@ -287,12 +320,30 @@ export class UploadPanel {
     title.textContent = 'CROBOTS'
     this.container.appendChild(title)
 
+    // Robot count selector
+    const countRow = document.createElement('div')
+    countRow.className = 'robot-count-row'
+    const countLabel = document.createElement('span')
+    countLabel.textContent = 'Robots:'
+    countRow.appendChild(countLabel)
+
+    for (const n of [2, 3, 4]) {
+      const btn = document.createElement('button')
+      btn.className = 'count-btn' + (n === 2 ? ' active' : '')
+      btn.textContent = String(n)
+      btn.onclick = () => this.setActiveCount(n)
+      countRow.appendChild(btn)
+      this.countBtns.push(btn)
+    }
+    this.container.appendChild(countRow)
+
     const slotsRow = document.createElement('div')
     slotsRow.className = 'upload-slots'
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const slotEl = this.createSlot(i)
       this.slotElements.push(slotEl)
+      if (i >= 2) slotEl.classList.add('hidden')
       slotsRow.appendChild(slotEl)
     }
     this.container.appendChild(slotsRow)
@@ -302,8 +353,8 @@ export class UploadPanel {
     this.battleButton.textContent = 'Battle!'
     this.battleButton.disabled = true
     this.battleButton.onclick = () => {
-      const names = this.slots.map(s => s.name!)
-      this.battleCallback?.(this.slots.length, names)
+      const names = this.slots.slice(0, this.activeCount).map(s => s.name!)
+      this.battleCallback?.(this.activeCount, names)
     }
     this.container.appendChild(this.battleButton)
 
@@ -454,9 +505,21 @@ export class UploadPanel {
     this.errorModal.classList.remove('visible')
   }
 
+  private setActiveCount(n: number): void {
+    this.activeCount = n
+    this.countBtns.forEach((btn, i) => {
+      btn.classList.toggle('active', i + 2 === n)
+    })
+    this.slotElements.forEach((el, i) => {
+      el.classList.toggle('hidden', i >= n)
+    })
+    this.updateBattleButton()
+  }
+
   private updateBattleButton(): void {
-    const anyCompiling = this.slots.some(s => s.status === 'compiling')
-    const allReady = this.slots.every(s => s.status === 'ready')
+    const active = this.slots.slice(0, this.activeCount)
+    const anyCompiling = active.some(s => s.status === 'compiling')
+    const allReady = active.every(s => s.status === 'ready')
     this.battleButton.disabled = anyCompiling || !allReady
   }
 }
