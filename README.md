@@ -1,2 +1,67 @@
-# crobots-reboot
-A modern web-based reboot of CROBOTS — write robots in C, watch them battle in real-time 3D
+# CROBOTS Reboot
+
+> "C 코드로 로봇을 프로그래밍하고, 전장에 내보내라."
+
+1985년 Tom Poindexter가 만든 고전 게임 **CROBOTS**의 웹 리부트입니다.  
+원작 그대로의 게임 엔진(C)을 WebAssembly로 컴파일해 브라우저에서 구동합니다.
+
+---
+
+## 어떤 게임인가요?
+
+CROBOTS는 **아케이드 게임이 아닙니다.** 플레이어가 직접 조종하는 것은 없습니다.  
+여러분이 해야 할 일은 **C 언어로 로봇의 전략을 프로그래밍**하는 것입니다.
+
+- 작성한 `.r` 파일을 업로드하면 컴파일됩니다.
+- 두 로봇이 1000m × 1000m 전장에서 자율적으로 전투를 벌입니다.
+- 스캐너로 적을 탐지하고, 캐논을 발사하고, 드라이브로 이동합니다.
+- 먼저 데미지 100%가 되는 쪽이 패배합니다.
+
+---
+
+## 빠른 시작
+
+1. **로봇 파일 작성** — 확장자 `.r`인 C 소스 파일을 작성합니다
+2. **업로드** — 브라우저에서 두 슬롯에 각각 드롭하면 자동으로 컴파일됩니다
+3. **Battle!** — 두 로봇이 모두 `ready` 상태가 되면 전투를 시작합니다
+4. **리플레이** — 재생/일시정지, 배속, 스크럽으로 전투를 다시 봅니다
+
+가장 단순한 로봇 (움직이기만 하는 연습용 타겟):
+
+```c
+main()
+{
+  while(1) {
+    drive(rand(360), 50);
+  }
+}
+```
+
+---
+
+## 문서
+
+| 문서 | 내용 |
+|------|------|
+| [로봇 언어 가이드](docs/robot-language.md) | CROBOTS C 언어 문법, 제약사항, 연산자 |
+| [내장 함수 레퍼런스](docs/intrinsics.md) | scan, cannon, drive 등 전체 함수 레퍼런스 |
+| [배틀필드 메커니즘](docs/mechanics.md) | 좌표계, 이동, 미사일, 데미지 규칙 |
+| [예제 로봇 분석](docs/examples.md) | 샘플 로봇 4종 코드 해설 및 전략 팁 |
+
+---
+
+## 기술 스택
+
+- **게임 엔진**: 원작 C 코드 → [Emscripten](https://emscripten.org/) → WebAssembly
+- **렌더링**: [Three.js](https://threejs.org/) (Orthographic 뷰, 네온 사이버펑크 스타일)
+- **프론트엔드**: TypeScript + Vite, Web Worker로 엔진 격리
+
+---
+
+## 원작에 대하여
+
+원작 CROBOTS는 1985년 IBM-PC/DOS용으로 개발되었으며,  
+현재 [GPLv2 라이선스](original/LICENSE)로 공개되어 있습니다.  
+원작 소스코드와 매뉴얼은 [original/](original/) 디렉토리에서 확인할 수 있습니다.
+
+이 리부트 프로젝트도 동일하게 GPLv2를 따릅니다.

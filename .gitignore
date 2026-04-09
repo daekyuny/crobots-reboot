@@ -1,0 +1,20 @@
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+
+# Engine build artifacts
+engine/build/
+
+# WASM artifacts (generated from engine build)
+frontend/public/engine.js
+frontend/public/engine.wasm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
