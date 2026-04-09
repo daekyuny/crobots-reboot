@@ -14,19 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Bison and Flex
-        run: sudo apt-get install -y bison flex
-
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
-
-      - name: Pre-generate grammar.c and lexanal.c
-        working-directory: engine
-        run: |
-          bison -d -o src/grammar.c src/grammar.y
-          flex -o src/lexanal.c src/lexanal.l
 
       - name: Build WASM
         working-directory: engine
