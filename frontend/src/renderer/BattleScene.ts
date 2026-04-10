@@ -20,6 +20,7 @@ export class BattleScene {
   private robots: RobotMesh[] = [];
   private missiles: MissileMesh[] = [];
   private explosions: ExplosionFX[] = [];
+  private teamModeActive = false;
 
   constructor(canvas: HTMLCanvasElement) {
     // Scene
@@ -114,8 +115,24 @@ export class BattleScene {
     this.scene.add(border);
   }
 
+  /** Enable or disable team mode visuals. Auto-detected from frame data on first frame. */
+  setTeamMode(enabled: boolean): void {
+    this.teamModeActive = enabled;
+    for (const robot of this.robots) {
+      robot.setTeamMode(enabled);
+    }
+  }
+
   /** Apply a single frame of battle data to update all entities. */
   applyFrame(frame: Frame): void {
+    // Auto-detect team mode on the first frame: if any robot has team !== 0, it's a team battle
+    if (frame.cycle <= 1 && !this.teamModeActive) {
+      const hasTeams = frame.robots.some(r => r.team !== 0);
+      if (hasTeams) {
+        this.setTeamMode(true);
+      }
+    }
+
     // Update robots
     for (let i = 0; i < frame.robots.length && i < this.robots.length; i++) {
       this.robots[i].update(frame.robots[i]);

@@ -1,7 +1,7 @@
 import { BattleScene } from './renderer/BattleScene'
 import { UploadPanel } from './ui/UploadPanel'
 import { ControlsPanel } from './ui/ControlsPanel'
-import { compileRobot, runBattle } from './engine/wasm-bridge'
+import { compileRobot, runBattle, setTeam, setTeamMode } from './engine/wasm-bridge'
 import { END_NORMAL } from './engine/types'
 
 const MIN_CANVAS = 600  // minimum square side in CSS pixels
@@ -55,10 +55,23 @@ upload.onCompile((source, slot) => compileRobot(source, slot))
 // Battle flow — robots are already compiled, just run
 let lastNumRobots = 0
 let lastNames: string[] = []
+let lastTeamMode = 0
+let lastTeams: number[] = []
 
-async function startBattle(numRobots: number, names: string[]): Promise<void> {
+async function startBattle(numRobots: number, names: string[], teamMode = 0, teams: number[] = []): Promise<void> {
   lastNumRobots = numRobots
   lastNames = names
+  lastTeamMode = teamMode
+  lastTeams = teams
+
+  // Set team mode and assignments before running
+  await setTeamMode(teamMode)
+  if (teamMode > 0) {
+    for (let i = 0; i < numRobots; i++) {
+      await setTeam(i, teams[i] ?? 0)
+    }
+  }
+
   const { frames, result } = await runBattle(numRobots)
   controls.setFrames(frames, names, result)
   // Controls panel just became visible — re-measure and shrink canvas to fit.
@@ -69,10 +82,10 @@ async function startBattle(numRobots: number, names: string[]): Promise<void> {
   }
 }
 
-upload.onBattle(async (numRobots: number, names: string[]) => {
+upload.onBattle(async (numRobots: number, names: string[], teamMode: number, teams: number[]) => {
   try {
     upload.setStatus('running')
-    await startBattle(numRobots, names)
+    await startBattle(numRobots, names, teamMode, teams)
     upload.setStatus('done')
   } catch (e) {
     upload.setStatus('error', String(e))
@@ -81,7 +94,7 @@ upload.onBattle(async (numRobots: number, names: string[]) => {
 
 controls.onRematch(async () => {
   try {
-    await startBattle(lastNumRobots, lastNames)
+    await startBattle(lastNumRobots, lastNames, lastTeamMode, lastTeams)
   } catch (e) {
     console.error('Rematch failed:', e)
   }

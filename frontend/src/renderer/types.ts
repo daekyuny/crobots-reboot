@@ -6,6 +6,7 @@ export interface RobotFrame {
   damage: number;
   scanHeading: number;
   status: number;
+  team: number;
 }
 
 export interface MissileFrame {

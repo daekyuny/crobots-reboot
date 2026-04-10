@@ -75,19 +75,38 @@ export class ControlsPanel {
   private updateResultBanner(): void {
     if (!this.resultBanner) return
     const r = this.battleResult
-    if (!r || r.endReason === 0) {
+    if (!r) {
       this.resultBanner.style.display = 'none'
       return
     }
+    // For normal (endReason=0) FFA wins, no banner needed (last-standing is obvious)
+    // For normal team wins, show the winning team
+    if (r.endReason === 0 && !r.isTeam) {
+      this.resultBanner.style.display = 'none'
+      return
+    }
+    if (r.endReason === 0 && r.isTeam) {
+      const teamName = r.winner === 0 ? 'Team A' : r.winner === 1 ? 'Team B' : 'Nobody'
+      this.resultBanner.textContent = r.winner >= 0 ? `${teamName} wins!` : 'Draw!'
+      this.resultBanner.style.display = 'block'
+      return
+    }
+
+    const teamLabel = (winner: number): string => {
+      if (!r.isTeam) return this.robotNames[winner] ?? `Robot ${winner + 1}`
+      // In team mode, winner is team index (0=A, 1=B)
+      return winner === 0 ? 'Team A' : 'Team B'
+    }
+    const suffix = r.isTeam ? '' : ' (least damage)'
 
     let label: string
     if (r.endReason === END_STALL) {
       label = r.winner >= 0
-        ? `STALL — ${this.robotNames[r.winner] ?? `Robot ${r.winner + 1}`} wins (least damage)`
+        ? `STALL — ${teamLabel(r.winner)} wins${suffix}`
         : 'STALL — Draw (equal damage)'
     } else if (r.endReason === END_CYCLE_LIMIT) {
       label = r.winner >= 0
-        ? `TIME LIMIT — ${this.robotNames[r.winner] ?? `Robot ${r.winner + 1}`} wins (least damage)`
+        ? `TIME LIMIT — ${teamLabel(r.winner)} wins${suffix}`
         : 'TIME LIMIT — Draw (equal damage)'
     } else {
       this.resultBanner.style.display = 'none'
@@ -526,12 +545,13 @@ export class ControlsPanel {
     if (this.frames.length === 0) return
 
     const data = {
-      version: 1,
+      version: 2,
       robots: this.robotNames.map((name, i) => ({
         slot: i,
         name,
         color: ROBOT_COLORS[i],
       })),
+      result: this.battleResult,
       frameCount: this.frames.length,
       frames: this.frames,
     }
@@ -552,7 +572,7 @@ export class ControlsPanel {
         throw new Error('Invalid replay file format')
       }
       const names = data.robots.map((r: { name: string }) => r.name)
-      this.setFrames(data.frames, names)
+      this.setFrames(data.frames, names, data.result ?? undefined)
       this.pause()
     } catch (e) {
       console.error('Failed to load replay:', e)

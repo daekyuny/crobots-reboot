@@ -5,6 +5,7 @@ export const END_CYCLE_LIMIT = 2
 export interface BattleResult {
   endReason: number   /* END_NORMAL | END_STALL | END_CYCLE_LIMIT */
   winner: number      /* robot index (0-3), or -1 for draw */
+  isTeam: boolean     /* true if battle used team mode */
 }
 
 export interface RobotFrame {
@@ -15,6 +16,7 @@ export interface RobotFrame {
   damage: number;
   scanHeading: number;
   status: number;
+  team: number;
 }
 
 export interface MissileFrame {

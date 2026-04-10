@@ -421,4 +421,75 @@ int cnt2;
 
 ---
 
+## 팀 배틀 로봇 만들기
+
+### 핵심: scan() + friend() 패턴
+
+팀 배틀에서 가장 중요한 것은 **아군과 적을 구분**하는 것입니다. `scan()` 호출 직후 `friend()`를 호출하여 확인합니다:
+
+```c
+/* 팀/FFA 겸용 스캔+발사 루틴 */
+attack(angle)
+int angle;
+{
+  int range;
+  range = scan(angle, 10);
+  if (range > 0 && !friend()) {
+    cannon(angle, range);
+  }
+  return range;
+}
+```
+
+> `friend()`는 FFA에서 항상 0을 반환하므로, 위 코드는 FFA에서도 정상 동작합니다.
+
+### 팀 전용 전략 팁
+
+**1. Competitive 모드에서는 사격 판단이 중요합니다**
+
+```c
+range = scan(angle, 5);
+if (range > 0) {
+  if (friend()) {
+    /* 아군이 이 방향에 있다 — 다른 방향 스캔 */
+    angle += 30;
+  } else {
+    cannon(angle, range);
+  }
+}
+```
+
+**2. 아군 근처에서 적을 발견한 경우**
+
+폭발 반경(40m)이 아군에게 영향을 줄 수 있습니다. 거리가 가까우면 발사를 보류하거나 다른 각도에서 공격하세요.
+
+**3. 팀 로봇은 기존 로봇을 수정해서 만들 수 있습니다**
+
+기존 FFA 로봇의 `scan()` + `cannon()` 패턴에 `friend()` 체크만 추가하면 됩니다:
+
+```c
+/* 변경 전 (FFA 전용) */
+range = scan(dir, 1);
+if (range > 0 && range <= 700) {
+  cannon(dir, range);
+}
+
+/* 변경 후 (팀 겸용) */
+range = scan(dir, 1);
+if (range > 0 && range <= 700 && !friend()) {
+  cannon(dir, range);
+}
+```
+
+### 샘플 팀 로봇
+
+팀 배틀용 샘플 로봇은 [robots_test/](../robots_test/) 디렉토리에서 확인할 수 있습니다:
+
+| 파일 | 전략 |
+|------|------|
+| `team_sniper.c` | 코너 저격 + `friend()` 아군 제외 |
+| `team_guard.c` | 중앙 순찰 + 아군 보호 |
+
+---
+
 [← 배틀필드 메커니즘](mechanics.md) | [목차로 돌아가기](../README.md)

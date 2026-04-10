@@ -355,6 +355,9 @@ int displ;
 	  for (n = 0; n < MAXROBOTS; n++) {
 	    if (robots[n].status == DEAD)
 	      continue;
+	    /* In safe team mode, skip damage to teammates of the missile owner */
+	    if (team_mode == 1 && robots[n].team == robots[r].team)
+	      continue;
 	    x = (robots[n].x - missiles[r][i].cur_x) / CLICK;
 	    y = (robots[n].y - missiles[r][i].cur_y) / CLICK;
 	    d = (int) sqrt(((double) x * (double) x)+((double) y * (double) y));

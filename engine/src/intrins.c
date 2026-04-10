@@ -113,10 +113,20 @@ long c_scan()
       /* this robot is within scan, so get his distance */
       distance = sqrt((x * x) + (y * y));
       /* only get the closest distance, when two or more robots are in scan */
-      if (distance < close_dist || close_dist == 0L)
+      if (distance < close_dist || close_dist == 0L) {
 	close_dist = distance;
+	/* track whether closest scanned robot is a teammate */
+	if (team_mode > 0 && robots[i].team == cur_robot->team)
+	  cur_robot->last_scan_is_friend = 1;
+	else
+	  cur_robot->last_scan_is_friend = 0;
+      }
     }
   }
+
+  /* if scan found nothing, clear the friend flag */
+  if (close_dist == 0L)
+    cur_robot->last_scan_is_friend = 0;
 
   push((long) close_dist);
 }
@@ -341,5 +351,17 @@ long c_sqrt()
   x = (long) (sqrt((double) x));
 
   push(x);
+}
+
+
+/* c_friend - return 1 if last scan hit was a teammate, 0 otherwise */
+
+long c_friend()
+{
+  if (team_mode == 0) {
+    push(0L);  /* FFA: no teammates */
+    return;
+  }
+  push((long) cur_robot->last_scan_is_friend);
 }
 

@@ -299,6 +299,82 @@ int x1, y1, x2, y2;
 
 ---
 
+## friend() — 아군 확인 (팀 배틀 전용)
+
+```c
+int friend();
+```
+
+직전 `scan()` 호출로 탐지한 로봇이 **아군(같은 팀)**인지 반환합니다.
+
+**반환값**
+
+- `1`: 직전 스캔에서 탐지한 로봇이 아군
+- `0`: 적 로봇이거나, 스캔 결과가 없거나, FFA 모드
+
+> `friend()`는 반드시 `scan()` **이후에** 호출해야 합니다. `scan()` 없이 호출하면 이전 스캔의 결과가 남아 있습니다.
+
+**기본 사용 패턴: scan + friend**
+
+```c
+int range;
+
+range = scan(angle, 10);
+if (range > 0 && !friend()) {
+  /* 적 로봇 발견 — 발사 */
+  cannon(angle, range);
+}
+```
+
+**전방향 스캔에서 아군 제외**
+
+```c
+int angle, range;
+angle = 0;
+
+while (1) {
+  range = scan(angle, 10);
+  if (range > 0) {
+    if (friend()) {
+      /* 아군이다 — 발사하지 않고 다음 방향으로 */
+      angle += 20;
+      angle %= 360;
+    } else {
+      /* 적 발견 — 교전 */
+      cannon(angle, range);
+    }
+  } else {
+    angle += 20;
+    angle %= 360;
+  }
+}
+```
+
+**Competitive 모드에서의 정밀 사격**
+
+Competitive 모드에서는 아군 오사도 데미지를 입히므로, `friend()`로 아군을 확실히 제외해야 합니다:
+
+```c
+/* 적을 추적하되, 아군이 사이에 있으면 발사 보류 */
+range = scan(angle, 2);
+if (range > 0) {
+  if (friend()) {
+    /* 아군이 이 방향에 있음 — 발사하면 아군 피해 */
+    angle += 5;    /* 약간 각도를 바꿔서 재스캔 */
+  } else {
+    cannon(angle, range);
+  }
+}
+```
+
+**전략적 고려사항**
+
+- Safe 모드에서는 `friend()` 없이 발사해도 아군에게 데미지가 없지만, 미사일 낭비를 줄이려면 사용하는 것이 좋습니다
+- Competitive 모드에서는 `friend()` 체크가 **필수적**입니다
+- FFA 모드에서는 항상 `0`을 반환하므로 FFA/팀 양용 로봇을 만들 수 있습니다
+
+---
+
 ## 전체 함수 요약
 
 | 함수 | 설명 | 반환값 |
@@ -316,6 +392,7 @@ int x1, y1, x2, y2;
 | `tan(deg)` | 탄젠트 | tan × 100000 |
 | `atan(ratio)` | 아크탄젠트 | 각도(degree) |
 | `sqrt(x)` | 제곱근 | 정수 제곱근 |
+| `friend()` | 직전 스캔 대상이 아군인지 | 1=아군, 0=적/없음 |
 
 ---
 

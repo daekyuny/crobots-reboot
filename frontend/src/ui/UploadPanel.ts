@@ -10,7 +10,7 @@ interface Slot {
   error: string | null
 }
 
-type BattleCallback = (numRobots: number, names: string[]) => void
+type BattleCallback = (numRobots: number, names: string[], teamMode: number, teams: number[]) => void
 type CompileCallback = (source: string, slot: number) => Promise<void>
 
 export class UploadPanel {
@@ -21,6 +21,10 @@ export class UploadPanel {
     { source: null, name: null, status: 'idle', error: null },
   ]
   private activeCount = 2
+  private teamMode = 0  // 0=FFA, 1=team-safe, 2=team-competitive
+  private teamAssignments = [0, 0, 1, 1]  // default: slots 0,1 → Team A; 2,3 → Team B
+  private teamTags: HTMLElement[] = []
+  private teamModeRow!: HTMLElement
   private battleCallback: BattleCallback | null = null
   private compileCallback: CompileCallback | null = null
   private errorModal!: HTMLElement
@@ -208,6 +212,59 @@ export class UploadPanel {
       .upload-slot input[type="file"] {
         display: none;
       }
+      .team-mode-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #888;
+      }
+      .mode-btn {
+        background: rgba(40, 40, 60, 0.8);
+        color: #aaa;
+        border: 1px solid rgba(100, 100, 140, 0.3);
+        border-radius: 4px;
+        padding: 3px 10px;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .mode-btn:hover {
+        background: rgba(60, 60, 90, 0.8);
+      }
+      .mode-btn.active {
+        background: rgba(0, 255, 136, 0.15);
+        border-color: #00ff88;
+        color: #00ff88;
+      }
+      .team-tag {
+        display: none;
+        font-size: 10px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        padding: 1px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background 0.15s;
+        user-select: none;
+      }
+      .team-tag.visible {
+        display: inline-block;
+      }
+      .team-tag.team-a {
+        background: rgba(68, 136, 255, 0.2);
+        border: 1px solid #4488ff;
+        color: #4488ff;
+      }
+      .team-tag.team-b {
+        background: rgba(255, 68, 68, 0.2);
+        border: 1px solid #ff4444;
+        color: #ff4444;
+      }
+      .team-tag:hover {
+        filter: brightness(1.3);
+      }
       /* Error popup modal */
       .compile-error-overlay {
         display: none;
@@ -337,6 +394,34 @@ export class UploadPanel {
     }
     this.container.appendChild(countRow)
 
+    // Team mode selector
+    this.teamModeRow = document.createElement('div')
+    this.teamModeRow.className = 'team-mode-row'
+    const modeLabel = document.createElement('span')
+    modeLabel.textContent = 'Mode:'
+    this.teamModeRow.appendChild(modeLabel)
+
+    const modes = [
+      { label: 'FFA', value: 0 },
+      { label: 'Team Safe', value: 1 },
+      { label: 'Team PvP', value: 2 },
+    ]
+    const modeBtns: HTMLButtonElement[] = []
+    for (const m of modes) {
+      const btn = document.createElement('button')
+      btn.className = 'mode-btn' + (m.value === 0 ? ' active' : '')
+      btn.textContent = m.label
+      btn.onclick = () => {
+        this.teamMode = m.value
+        modeBtns.forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        this.updateTeamTags()
+      }
+      this.teamModeRow.appendChild(btn)
+      modeBtns.push(btn)
+    }
+    this.container.appendChild(this.teamModeRow)
+
     const slotsRow = document.createElement('div')
     slotsRow.className = 'upload-slots'
 
@@ -354,7 +439,7 @@ export class UploadPanel {
     this.battleButton.disabled = true
     this.battleButton.onclick = () => {
       const names = this.slots.slice(0, this.activeCount).map(s => s.name!)
-      this.battleCallback?.(this.activeCount, names)
+      this.battleCallback?.(this.activeCount, names, this.teamMode, this.teamAssignments.slice(0, this.activeCount))
     }
     this.container.appendChild(this.battleButton)
 
@@ -397,6 +482,25 @@ export class UploadPanel {
     dropText.className = 'slot-drop-text'
     dropText.textContent = 'Drop .r / .c file or click'
     slot.appendChild(dropText)
+
+    // Team tag
+    const teamTag = document.createElement('div')
+    teamTag.className = 'team-tag'
+    const defaultTeam = this.teamAssignments[index]
+    teamTag.classList.add(defaultTeam === 0 ? 'team-a' : 'team-b')
+    teamTag.textContent = defaultTeam === 0 ? 'TEAM A' : 'TEAM B'
+    teamTag.title = 'Click to toggle team'
+    teamTag.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const current = this.teamAssignments[index]
+      const next = current === 0 ? 1 : 0
+      this.teamAssignments[index] = next
+      teamTag.classList.remove('team-a', 'team-b')
+      teamTag.classList.add(next === 0 ? 'team-a' : 'team-b')
+      teamTag.textContent = next === 0 ? 'TEAM A' : 'TEAM B'
+    })
+    slot.appendChild(teamTag)
+    this.teamTags.push(teamTag)
 
     // Status badge
     const statusBadge = document.createElement('div')
@@ -513,7 +617,15 @@ export class UploadPanel {
     this.slotElements.forEach((el, i) => {
       el.classList.toggle('hidden', i >= n)
     })
+    this.updateTeamTags()
     this.updateBattleButton()
+  }
+
+  private updateTeamTags(): void {
+    const isTeam = this.teamMode > 0
+    for (let i = 0; i < this.teamTags.length; i++) {
+      this.teamTags[i].classList.toggle('visible', isTeam && i < this.activeCount)
+    }
   }
 
   private updateBattleButton(): void {

@@ -61,6 +61,8 @@ struct robot {			/* robot context */
   struct instr *code;		/* machine instructions, actually instr */
   struct instr *ip; 		/* instruction pointer */
   int stall_cycles;		/* remaining stall ticks for current intrinsic */
+  int team;			/* team id: 0 or 1 (for 2v2) */
+  int last_scan_is_friend;	/* set by c_scan: 1 if closest scanned robot is teammate */
 };
 
 struct func {			/* function header */
@@ -126,6 +128,16 @@ extern
 int r_debug,			/* debug switch */
     r_flag;			/* global flag for push/pop errors */
 
+#ifndef INIT
+extern
+#endif
+int team_mode;    /* 0=FFA, 1=team-safe (no friendly fire), 2=team-competitive (friendly fire) */
+
+#ifndef INIT
+extern
+#endif
+int battle_is_team;  /* 1 if the battle was team mode, 0 if FFA */
+
 /* instruction types */
 #define NOP    0		/* end of code marker */
 #define FETCH  1		/* push(varpool(offset)) */
@@ -172,6 +184,7 @@ long c_cos();     /* cos(degree); = cos * 100000 */
 long c_tan();     /* tan(degree); = tan * 100000 */
 long c_atan();    /* atan(ratio); = degree */
 long c_sqrt();    /* sqrt(x); = square root */
+long c_friend();  /* friend(); = 1 if last scan hit was teammate */
 
 /* declare instrinsic function table */
 #ifndef INIT
@@ -198,7 +211,8 @@ struct intrin {
   {"tan",	c_tan},
   {"atan",	c_atan},
   {"sqrt",	c_sqrt},
-  {"",		(long (*)()) 0} 
+  {"friend",	c_friend},
+  {"",		(long (*)()) 0}
  }
 #endif
 ;
@@ -227,6 +241,7 @@ typedef struct {
     int damage;
     int scan_heading;
     int status;         /* ACTIVE=1, DEAD=0 */
+    int team;           /* team id for this robot */
 } RobotFrame;
 
 typedef struct {

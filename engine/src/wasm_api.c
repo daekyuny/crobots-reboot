@@ -25,6 +25,7 @@ extern Frame* get_frame_buffer_internal(void);
 extern void reset_frames(void);
 extern int battle_end_reason;
 extern int battle_winner;
+extern int battle_is_team;
 
 /* Lexer/parser externals */
 extern int yyparse(void);
@@ -188,4 +189,23 @@ int get_end_reason(void) {
 EMSCRIPTEN_KEEPALIVE
 int get_winner(void) {
     return battle_winner;
+}
+
+
+EMSCRIPTEN_KEEPALIVE
+void set_team(int slot, int team) {
+    if (slot >= 0 && slot < MAXROBOTS)
+        robots[slot].team = team;
+}
+
+
+EMSCRIPTEN_KEEPALIVE
+void set_team_mode(int mode) {
+    team_mode = mode;
+}
+
+
+EMSCRIPTEN_KEEPALIVE
+int get_battle_is_team(void) {
+    return battle_is_team;
 }

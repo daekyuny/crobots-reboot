@@ -103,6 +103,8 @@ void init_robot(int i)
   robots[i].last_scan = -1;
   robots[i].reload = 0;
   robots[i].stall_cycles = 0;
+  robots[i].team = 0;
+  robots[i].last_scan_is_friend = 0;
   for (j = 0; j < MIS_ROBOT; j++) {
     missiles[i][j].stat = AVAIL;
     missiles[i][j].last_xx = -1;
@@ -172,7 +174,42 @@ static void compute_battle_result(int n, int stall_detected, long total_cycles)
   int winner_idx = -1;
   int tie = 0;
 
-  /* count survivors and find least-damaged */
+  battle_is_team = (team_mode > 0) ? 1 : 0;
+
+  if (team_mode > 0) {
+    /* Team mode: winner is the surviving team id */
+    int team0_alive = 0, team1_alive = 0;
+    int team0_damage = 0, team1_damage = 0;
+    for (i = 0; i < n; i++) {
+      if (robots[i].status == ACTIVE) {
+        if (robots[i].team == 0) { team0_alive++; team0_damage += robots[i].damage; }
+        else { team1_alive++; team1_damage += robots[i].damage; }
+      }
+    }
+
+    if (team0_alive > 0 && team1_alive == 0) {
+      battle_end_reason = END_NORMAL;
+      battle_winner = 0;  /* team 0 wins */
+    } else if (team1_alive > 0 && team0_alive == 0) {
+      battle_end_reason = END_NORMAL;
+      battle_winner = 1;  /* team 1 wins */
+    } else if (team0_alive == 0 && team1_alive == 0) {
+      battle_end_reason = END_NORMAL;
+      battle_winner = -1;  /* mutual destruction */
+    } else {
+      /* both teams alive: stall or cycle limit, compare total damage */
+      battle_end_reason = stall_detected ? END_STALL : END_CYCLE_LIMIT;
+      if (team0_damage < team1_damage)
+        battle_winner = 0;
+      else if (team1_damage < team0_damage)
+        battle_winner = 1;
+      else
+        battle_winner = -1;  /* tied damage = draw */
+    }
+    return;
+  }
+
+  /* FFA mode: original logic */
   for (i = 0; i < n; i++) {
     if (robots[i].status == ACTIVE) {
       survivors++;
@@ -220,7 +257,9 @@ void run_battle_wasm(int n)
   /* reset and activate all robots (init_robot clears game state without
      touching compiled code; robot_go resets the instruction pointer) */
   for (i = 0; i < n; i++) {
+    int saved_team = robots[i].team;
     init_robot(i);
+    robots[i].team = saved_team;
     robot_go(&robots[i]);
     robots[i].status = ACTIVE;
   }
@@ -236,16 +275,31 @@ void run_battle_wasm(int n)
 
   /* multi-tasker; give each robot one cycle per loop */
   while (robotsleft > 1 && total_cycles < CYCLE_LIMIT && !stall_detected) {
-    robotsleft = 0;
     for (i = 0; i < n; i++) {
       if (robots[i].status == ACTIVE) {
-	robotsleft++;
         if (robots[i].stall_cycles > 0) {
             robots[i].stall_cycles--;
         } else {
             cur_robot = &robots[i];
 	    cycle();
         }
+      }
+    }
+
+    /* count survivors: team-aware or FFA */
+    if (team_mode > 0) {
+      int team0_alive = 0, team1_alive = 0;
+      for (i = 0; i < n; i++) {
+        if (robots[i].status == ACTIVE) {
+          if (robots[i].team == 0) team0_alive++;
+          else team1_alive++;
+        }
+      }
+      robotsleft = (team0_alive > 0 && team1_alive > 0) ? 2 : (team0_alive + team1_alive > 0 ? 1 : 0);
+    } else {
+      robotsleft = 0;
+      for (i = 0; i < n; i++) {
+        if (robots[i].status == ACTIVE) robotsleft++;
       }
     }
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { RobotFrame } from './types';
 
 const ROBOT_COLORS = [0x00ffff, 0xff6600, 0x00ff88, 0xff00ff];
+const TEAM_COLORS = [0x4488ff, 0xff4444];
 
 export class RobotMesh {
   readonly slot: number;
@@ -10,6 +11,7 @@ export class RobotMesh {
   private indicator: THREE.Mesh;
   private healthRing: THREE.Line;
   private scanArc: THREE.LineSegments;
+  private teamRing: THREE.Mesh;
   private scanArcLife = 0;
   private prevScanHeading = -1;
   private activeScanWorldRad = 0;   // world-space scan direction, kept current
@@ -67,6 +69,23 @@ export class RobotMesh {
     this.scanArc.visible = false;
     this.group.add(this.scanArc);
 
+    // Team indicator ring: flat disc beneath the robot, hidden by default (FFA mode)
+    this.teamRing = new THREE.Mesh(
+      new THREE.RingGeometry(12, 14, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000,
+        emissive: TEAM_COLORS[0],
+        emissiveIntensity: 1.2,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
+      })
+    );
+    this.teamRing.rotation.x = -Math.PI / 2;
+    this.teamRing.position.y = -2.5;
+    this.teamRing.visible = false;
+    this.group.add(this.teamRing);
+
     // Initial position off-screen
     this.group.position.set(-100, 3, -100);
     scene.add(this.group);
@@ -92,6 +111,25 @@ export class RobotMesh {
 
     this.updateHealth(robot.damage);
     this.updateScanArc(robot.scanHeading);
+    this.updateTeamRing(robot.team);
+  }
+
+  private _teamMode = false;
+
+  /** Show or hide the team indicator. Called by BattleScene when team mode is detected. */
+  setTeamMode(enabled: boolean): void {
+    this._teamMode = enabled;
+    if (!enabled) {
+      this.teamRing.visible = false;
+    }
+  }
+
+  private updateTeamRing(team: number): void {
+    if (!this._teamMode) return;
+    this.teamRing.visible = true;
+    const teamColor = TEAM_COLORS[team] ?? TEAM_COLORS[0];
+    const mat = this.teamRing.material as THREE.MeshStandardMaterial;
+    mat.emissive.setHex(teamColor);
   }
 
   private updateHealth(damage: number): void {

@@ -5,7 +5,7 @@ declare const self: DedicatedWorkerGlobalScope
 
 interface RobotFrame {
   x: number; y: number; heading: number; speed: number;
-  damage: number; scanHeading: number; status: number;
+  damage: number; scanHeading: number; status: number; team: number;
 }
 
 interface MissileFrame {
@@ -60,7 +60,7 @@ function parseFrames(mod: any, count: number, ptr: number, frameSize: number): F
 
     const robots: RobotFrame[] = []
     for (let r = 0; r < 4; r++) {
-      const rb = base + 1 + r * 7
+      const rb = base + 1 + r * 8
       robots.push({
         x:           heap[rb + 0],
         y:           heap[rb + 1],
@@ -69,12 +69,13 @@ function parseFrames(mod: any, count: number, ptr: number, frameSize: number): F
         damage:      heap[rb + 4],
         scanHeading: heap[rb + 5],
         status:      heap[rb + 6],
+        team:        heap[rb + 7],
       })
     }
 
     const missiles: MissileFrame[] = []
     for (let m = 0; m < 8; m++) {
-      const mb = base + 29 + m * 5
+      const mb = base + 33 + m * 5
       missiles.push({
         x:       heap[mb + 0],
         y:       heap[mb + 1],
@@ -105,6 +106,16 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ type: 'compile_result', slot, error: null })
       }
 
+    } else if (type === 'set_team') {
+      const { slot, team } = e.data
+      Module._set_team(slot, team)
+      self.postMessage({ type: 'set_team_result' })
+
+    } else if (type === 'set_team_mode') {
+      const { mode } = e.data
+      Module._set_team_mode(mode)
+      self.postMessage({ type: 'set_team_mode_result' })
+
     } else if (type === 'run') {
       const { numRobots } = e.data
       Module._run_battle(numRobots)
@@ -117,6 +128,7 @@ self.onmessage = async (e: MessageEvent) => {
       const result = {
         endReason: Module._get_end_reason(),
         winner:    Module._get_winner(),
+        isTeam:    !!Module._get_battle_is_team(),
       }
 
       self.postMessage({ type: 'complete', frames, result })
