@@ -6,7 +6,7 @@ SRCS = src/main.c src/cpu.c src/intrins.c src/motion.c \
        src/compiler.c src/grammar.c src/lexanal.c \
        src/frame_output.c src/wasm_api.c
 
-EXPORTED_FUNCTIONS = '["_compile_robot","_get_compile_error","_reset_battle","_run_battle","_get_frame_count","_get_frame_buffer","_get_frame_size","_malloc","_free"]'
+EXPORTED_FUNCTIONS = '["_compile_robot","_get_compile_error","_reset_battle","_run_battle","_get_frame_count","_get_frame_buffer","_get_frame_size","_get_end_reason","_get_winner","_malloc","_free"]'
 EXPORTED_RUNTIME = '["ccall","cwrap","UTF8ToString","stringToUTF8","intArrayFromString","HEAPU8","HEAP32"]'
 
 .PHONY: native wasm grammar clean

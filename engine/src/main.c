@@ -157,6 +157,50 @@ int robot_stat(int i)
 }
 
 
+/* battle_result - outcome of the most recent battle */
+int battle_end_reason = END_NORMAL;
+int battle_winner     = -1;   /* robot index, or -1 for draw */
+
+
+/* compute_battle_result - determine end_reason and winner after battle loop */
+
+static void compute_battle_result(int n, int stall_detected, long total_cycles)
+{
+  int i;
+  int survivors = 0;
+  int min_damage = 101;
+  int winner_idx = -1;
+  int tie = 0;
+
+  /* count survivors and find least-damaged */
+  for (i = 0; i < n; i++) {
+    if (robots[i].status == ACTIVE) {
+      survivors++;
+      if (robots[i].damage < min_damage) {
+        min_damage = robots[i].damage;
+        winner_idx = i;
+        tie = 0;
+      } else if (robots[i].damage == min_damage) {
+        tie = 1;
+      }
+    }
+  }
+
+  if (survivors == 1) {
+    battle_end_reason = END_NORMAL;
+    battle_winner = winner_idx;
+  } else if (survivors == 0) {
+    /* mutual destruction */
+    battle_end_reason = END_NORMAL;
+    battle_winner = -1;
+  } else {
+    /* multiple survivors: stall or cycle limit */
+    battle_end_reason = stall_detected ? END_STALL : END_CYCLE_LIMIT;
+    battle_winner = tie ? -1 : winner_idx;
+  }
+}
+
+
 /* run_battle_wasm - run a single battle, called from wasm_api */
 
 void run_battle_wasm(int n)
@@ -166,6 +210,9 @@ void run_battle_wasm(int n)
   int frame_timer;
   int i, j, k;
   long total_cycles = 0L;
+  int stall_counter = 0;
+  int stall_detected = 0;
+  int last_damage_total = 0;
 
   num_robots = n;
   r_debug = 0;
@@ -188,7 +235,7 @@ void run_battle_wasm(int n)
   record_frame(0L);
 
   /* multi-tasker; give each robot one cycle per loop */
-  while (robotsleft > 1 && total_cycles < CYCLE_LIMIT) {
+  while (robotsleft > 1 && total_cycles < CYCLE_LIMIT && !stall_detected) {
     robotsleft = 0;
     for (i = 0; i < n; i++) {
       if (robots[i].status == ACTIVE) {
@@ -218,6 +265,22 @@ void run_battle_wasm(int n)
           }
         }
       }
+
+      /* stall detection: reset counter if any damage occurred this motion cycle */
+      {
+        int damage_total = 0;
+        for (i = 0; i < n; i++)
+          damage_total += robots[i].damage;
+        if (damage_total > last_damage_total) {
+          last_damage_total = damage_total;
+          stall_counter = 0;
+        } else {
+          if (++stall_counter >= STALL_WINDOW) {
+            stall_detected = 1;
+            break;
+          }
+        }
+      }
     }
 
     /* is it time to record a frame? */
@@ -227,26 +290,30 @@ void run_battle_wasm(int n)
     }
   }
 
-  /* allow any flying missiles to explode */
-  while (1) {
-    k = 0;
-    for (i = 0; i < n; i++) {
-      for (j = 0; j < MIS_ROBOT; j++) {
-	if (missiles[i][j].stat == FLYING) {
-	  k = 1;
-	}
+  /* allow any flying missiles to explode (skip on stall — stop immediately) */
+  if (!stall_detected) {
+    while (1) {
+      k = 0;
+      for (i = 0; i < n; i++) {
+        for (j = 0; j < MIS_ROBOT; j++) {
+          if (missiles[i][j].stat == FLYING) {
+            k = 1;
+          }
+        }
       }
+      if (k) {
+        move_robots(0);
+        move_miss(0);
+      }
+      else
+        break;
     }
-    if (k) {
-      move_robots(0);
-      move_miss(0);
-    }
-    else
-      break;
   }
 
   /* record final frame */
   record_frame(total_cycles);
+
+  compute_battle_result(n, stall_detected, total_cycles);
 }
 
 

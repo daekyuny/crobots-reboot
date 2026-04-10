@@ -1,4 +1,5 @@
-import type { Frame } from '../engine/types'
+import type { BattleResult, Frame } from '../engine/types'
+import { END_STALL, END_CYCLE_LIMIT } from '../engine/types'
 
 const ROBOT_COLORS = ['#00ffff', '#ff6600', '#00ff88', '#ff00ff']
 const SPEEDS = [0.5, 1, 2, 4, 8]
@@ -11,9 +12,11 @@ export class ControlsPanel {
   private speed = 1  // frames to advance per tick
   private accumulator = 0
 
+  private battleResult: BattleResult | null = null
   private rematchCallback: (() => void) | null = null
 
   private container!: HTMLElement
+  private resultBanner!: HTMLElement
   private scrubber!: HTMLInputElement
   private cycleDisplay!: HTMLElement
   private frameDisplay!: HTMLElement
@@ -34,9 +37,10 @@ export class ControlsPanel {
     this.rematchCallback = cb
   }
 
-  setFrames(frames: Frame[], robotNames: string[]): void {
+  setFrames(frames: Frame[], robotNames: string[], result?: BattleResult): void {
     this.frames = frames
     this.robotNames = robotNames
+    this.battleResult = result ?? null
     this.frameIndex = 0
     this.accumulator = 0
     this.scrubber.max = String(Math.max(0, frames.length - 1))
@@ -44,6 +48,9 @@ export class ControlsPanel {
     this.container.style.display = 'flex'
     this.rematchBtn.disabled = false
     this.rematchBtn.textContent = 'Rematch'
+
+    // Show result banner for non-normal endings
+    this.updateResultBanner()
 
     // Update HUD panel names and visibility
     for (let i = 0; i < 4; i++) {
@@ -55,9 +62,40 @@ export class ControlsPanel {
       }
     }
 
-    if (frames.length > 0) {
+    // Stall / cycle-limit: jump to last frame so the scene stops immediately
+    if (result && result.endReason !== 0 && frames.length > 0) {
+      this.frameIndex = frames.length - 1
+      this.scrubber.value = String(this.frameIndex)
+      this.updateHUD(frames[this.frameIndex])
+    } else if (frames.length > 0) {
       this.updateHUD(frames[0])
     }
+  }
+
+  private updateResultBanner(): void {
+    if (!this.resultBanner) return
+    const r = this.battleResult
+    if (!r || r.endReason === 0) {
+      this.resultBanner.style.display = 'none'
+      return
+    }
+
+    let label: string
+    if (r.endReason === END_STALL) {
+      label = r.winner >= 0
+        ? `STALL — ${this.robotNames[r.winner] ?? `Robot ${r.winner + 1}`} wins (least damage)`
+        : 'STALL — Draw (equal damage)'
+    } else if (r.endReason === END_CYCLE_LIMIT) {
+      label = r.winner >= 0
+        ? `TIME LIMIT — ${this.robotNames[r.winner] ?? `Robot ${r.winner + 1}`} wins (least damage)`
+        : 'TIME LIMIT — Draw (equal damage)'
+    } else {
+      this.resultBanner.style.display = 'none'
+      return
+    }
+
+    this.resultBanner.textContent = label
+    this.resultBanner.style.display = 'block'
   }
 
   play(): void {
@@ -272,11 +310,26 @@ export class ControlsPanel {
         opacity: 0.35;
         cursor: not-allowed;
       }
+      .result-banner {
+        display: none;
+        padding: 5px 16px;
+        background: rgba(255, 160, 0, 0.15);
+        border-top: 1px solid rgba(255, 160, 0, 0.4);
+        color: #ffa000;
+        font-size: 12px;
+        letter-spacing: 1px;
+        text-align: center;
+      }
     `
     document.head.appendChild(style)
 
     this.container = document.createElement('div')
     this.container.className = 'controls-panel'
+
+    // Result banner (stall / time limit notice)
+    this.resultBanner = document.createElement('div')
+    this.resultBanner.className = 'result-banner'
+    this.container.appendChild(this.resultBanner)
 
     // HUD row (robot status panels)
     const hudRow = document.createElement('div')

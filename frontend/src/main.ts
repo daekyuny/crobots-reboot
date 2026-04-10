@@ -2,6 +2,7 @@ import { BattleScene } from './renderer/BattleScene'
 import { UploadPanel } from './ui/UploadPanel'
 import { ControlsPanel } from './ui/ControlsPanel'
 import { compileRobot, runBattle } from './engine/wasm-bridge'
+import { END_NORMAL } from './engine/types'
 
 const MIN_CANVAS = 600  // minimum square side in CSS pixels
 const APP_GAP = 2       // matches gap + padding in #app CSS (px)
@@ -58,12 +59,14 @@ let lastNames: string[] = []
 async function startBattle(numRobots: number, names: string[]): Promise<void> {
   lastNumRobots = numRobots
   lastNames = names
-  const frames = await runBattle(numRobots)
-  controls.setFrames(frames, names)
+  const { frames, result } = await runBattle(numRobots)
+  controls.setFrames(frames, names, result)
   // Controls panel just became visible — re-measure and shrink canvas to fit.
   applySize()
   scene.onResize()
-  controls.play()
+  if (result.endReason === END_NORMAL) {
+    controls.play()
+  }
 }
 
 upload.onBattle(async (numRobots: number, names: string[]) => {

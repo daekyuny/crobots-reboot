@@ -1,4 +1,9 @@
-import type { Frame } from './types'
+import type { BattleResult, Frame } from './types'
+
+export interface BattleOutcome {
+  frames: Frame[]
+  result: BattleResult
+}
 
 let worker: Worker | null = null
 type Resolve = (value: unknown) => void
@@ -20,7 +25,7 @@ function getWorker(): Worker {
         if (e.data.error) reject?.(new Error(e.data.error))
         else resolve?.(undefined)
       } else if (type === 'complete') {
-        resolve?.(e.data.frames)
+        resolve?.({ frames: e.data.frames, result: e.data.result })
       } else if (type === 'error') {
         reject?.(new Error(e.data.error))
       }
@@ -48,7 +53,7 @@ export function compileRobot(source: string, slot: number): Promise<void> {
   return send<void>({ type: 'compile', source, slot })
 }
 
-/** Run a battle with already-compiled robots. Returns replay frames. */
-export function runBattle(numRobots: number): Promise<Frame[]> {
-  return send<Frame[]>({ type: 'run', numRobots })
+/** Run a battle with already-compiled robots. Returns frames and battle result. */
+export function runBattle(numRobots: number): Promise<BattleOutcome> {
+  return send<BattleOutcome>({ type: 'run', numRobots })
 }

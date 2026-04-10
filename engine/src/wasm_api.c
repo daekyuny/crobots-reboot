@@ -23,6 +23,8 @@ extern void run_battle_wasm(int n);
 extern int get_frame_count_internal(void);
 extern Frame* get_frame_buffer_internal(void);
 extern void reset_frames(void);
+extern int battle_end_reason;
+extern int battle_winner;
 
 /* Lexer/parser externals */
 extern int yyparse(void);
@@ -174,4 +176,16 @@ const Frame* get_frame_buffer(void) {
 EMSCRIPTEN_KEEPALIVE
 int get_frame_size(void) {
     return (int)sizeof(Frame);
+}
+
+
+EMSCRIPTEN_KEEPALIVE
+int get_end_reason(void) {
+    return battle_end_reason;
+}
+
+
+EMSCRIPTEN_KEEPALIVE
+int get_winner(void) {
+    return battle_winner;
 }

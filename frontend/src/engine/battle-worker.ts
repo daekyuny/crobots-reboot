@@ -114,7 +114,12 @@ self.onmessage = async (e: MessageEvent) => {
       const size: number = Module._get_frame_size()
       const frames = parseFrames(Module, count, ptr, size)
 
-      self.postMessage({ type: 'complete', frames })
+      const result = {
+        endReason: Module._get_end_reason(),
+        winner:    Module._get_winner(),
+      }
+
+      self.postMessage({ type: 'complete', frames, result })
     }
 
   } catch (err) {

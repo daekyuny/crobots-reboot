@@ -209,6 +209,14 @@ extern
 #endif
 int num_robots;
 
+/* Battle end reasons */
+#define END_NORMAL      0   /* robot(s) destroyed normally */
+#define END_STALL       1   /* no damage for STALL_WINDOW motion cycles */
+#define END_CYCLE_LIMIT 2   /* hit CYCLE_LIMIT without a winner */
+
+/* Motion cycles with no damage before declaring stall */
+#define STALL_WINDOW 5000
+
 /* Frame recording structs */
 #define MAX_FRAMES 70000
 
