@@ -11,6 +11,8 @@ frontend/public/engine.wasm
 
 # Test robots (not for public repo)
 robots_test/
+.claude/
+_workspace/
 
 # OS
 .DS_Store

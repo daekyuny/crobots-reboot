@@ -98,6 +98,6 @@ main()
 
 원작 CROBOTS는 1985년 IBM-PC/DOS용으로 개발되었으며,  
 현재 [GPLv2 라이선스](original/LICENSE)로 공개되어 있습니다.  
-원작 소스코드와 매뉴얼은 [original/](original/) 디렉토리에서 확인할 수 있습니다.
+원작 소스코드와 매뉴얼은 [original/](https://github.com/troglobit/crobots)에서 확인할 수 있습니다.
 
 이 리부트 프로젝트도 동일하게 GPLv2를 따릅니다.
