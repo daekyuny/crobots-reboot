@@ -42,6 +42,8 @@ const controls = new ControlsPanel()
 // Mount UI
 document.getElementById('upload-container')!.appendChild(upload.render())
 document.getElementById('controls-container')!.appendChild(controls.render())
+// HUD overlay lives inside the canvas wrapper so it's positioned over the battlefield
+wrapper.appendChild(controls.getHudOverlay())
 
 // Handle window resize
 window.addEventListener('resize', () => {

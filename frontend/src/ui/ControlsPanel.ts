@@ -23,15 +23,20 @@ export class ControlsPanel {
   private playBtn!: HTMLButtonElement
   private rematchBtn!: HTMLButtonElement
   private speedBtns: HTMLButtonElement[] = []
+  private hudContainer!: HTMLElement
   private hudPanels: {
     nameEl: HTMLElement
     damageBar: HTMLElement
     damageText: HTMLElement
-    speedEl: HTMLElement
-    headingEl: HTMLElement
     statusEl: HTMLElement
     panel: HTMLElement
   }[] = []
+  private isTeamMode = false
+
+  /** Returns the HUD overlay element to be mounted inside the canvas wrapper */
+  getHudOverlay(): HTMLElement {
+    return this.hudContainer
+  }
 
   onRematch(cb: () => void): void {
     this.rematchCallback = cb
@@ -49,24 +54,34 @@ export class ControlsPanel {
     this.rematchBtn.disabled = false
     this.rematchBtn.textContent = 'Rematch'
 
-    // Show result banner for non-normal endings
-    this.updateResultBanner()
+    // Detect team mode from result
+    this.isTeamMode = !!(result && result.isTeam)
+
+    // Hide result banner until playback reaches the end
+    this.resultBanner.style.display = 'none'
 
     // Update HUD panel names and visibility
     for (let i = 0; i < 4; i++) {
       if (i < robotNames.length) {
-        this.hudPanels[i].nameEl.textContent = robotNames[i]
+        const teamSuffix = this.isTeamMode
+          ? ` (${frames.length > 0 && frames[0].robots[i] ? (frames[0].robots[i].team === 0 ? 'A' : 'B') : 'A'})`
+          : ''
+        this.hudPanels[i].nameEl.textContent = robotNames[i] + teamSuffix
         this.hudPanels[i].panel.style.display = 'flex'
       } else {
         this.hudPanels[i].panel.style.display = 'none'
       }
     }
 
+    // Show HUD overlay
+    this.hudContainer.style.display = 'flex'
+
     // Stall / cycle-limit: jump to last frame so the scene stops immediately
     if (result && result.endReason !== 0 && frames.length > 0) {
       this.frameIndex = frames.length - 1
       this.scrubber.value = String(this.frameIndex)
       this.updateHUD(frames[this.frameIndex])
+      this.updateResultBanner()
     } else if (frames.length > 0) {
       this.updateHUD(frames[0])
     }
@@ -131,6 +146,7 @@ export class ControlsPanel {
     this.frameIndex = 0
     this.accumulator = 0
     this.scrubber.value = '0'
+    this.resultBanner.style.display = 'none'
     if (this.frames.length > 0) {
       this.updateHUD(this.frames[0])
     }
@@ -148,6 +164,7 @@ export class ControlsPanel {
     // At end of battle
     if (this.frameIndex >= this.frames.length - 1) {
       this.pause()
+      this.updateResultBanner()
       return this.frames[this.frames.length - 1]
     }
 
@@ -249,36 +266,39 @@ export class ControlsPanel {
         font-size: 12px !important;
         padding: 2px 8px !important;
       }
-      .hud-row {
-        display: flex;
-        gap: 0;
-        background: rgba(10, 10, 20, 0.75);
+      .hud-overlay {
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 20;
+        pointer-events: none;
       }
       .robot-hud {
-        flex: 1;
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 6px 14px;
-        border-right: 1px solid rgba(60, 60, 80, 0.4);
-      }
-      .robot-hud:last-child {
-        border-right: none;
+        gap: 8px;
+        padding: 4px 10px;
+        background: rgba(10, 10, 20, 0.8);
+        border: 1px solid rgba(60, 60, 80, 0.4);
+        border-radius: 4px;
       }
       .hud-color {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         flex-shrink: 0;
       }
       .hud-name {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: bold;
-        min-width: 60px;
+        min-width: 50px;
       }
       .hud-damage-bar-bg {
-        width: 60px;
-        height: 7px;
+        width: 50px;
+        height: 6px;
         background: rgba(60, 60, 80, 0.6);
         border-radius: 3px;
         overflow: hidden;
@@ -291,12 +311,12 @@ export class ControlsPanel {
         border-radius: 3px;
       }
       .hud-stat {
-        font-size: 12px;
+        font-size: 11px;
         color: #888;
         white-space: nowrap;
       }
       .hud-status {
-        font-size: 11px;
+        font-size: 10px;
         letter-spacing: 1px;
         font-weight: bold;
       }
@@ -350,9 +370,9 @@ export class ControlsPanel {
     this.resultBanner.className = 'result-banner'
     this.container.appendChild(this.resultBanner)
 
-    // HUD row (robot status panels)
-    const hudRow = document.createElement('div')
-    hudRow.className = 'hud-row'
+    // HUD overlay (positioned on the canvas by main.ts)
+    this.hudContainer = document.createElement('div')
+    this.hudContainer.className = 'hud-overlay'
 
     for (let i = 0; i < 4; i++) {
       const panel = document.createElement('div')
@@ -384,26 +404,17 @@ export class ControlsPanel {
       damageText.textContent = '0%'
       panel.appendChild(damageText)
 
-      const speedEl = document.createElement('div')
-      speedEl.className = 'hud-stat'
-      panel.appendChild(speedEl)
-
-      const headingEl = document.createElement('div')
-      headingEl.className = 'hud-stat'
-      panel.appendChild(headingEl)
-
       const statusEl = document.createElement('div')
       statusEl.className = 'hud-status active'
       statusEl.textContent = 'ACTIVE'
       panel.appendChild(statusEl)
 
-      hudRow.appendChild(panel)
+      this.hudContainer.appendChild(panel)
 
       this.hudPanels.push({
-        nameEl, damageBar, damageText, speedEl, headingEl, statusEl, panel
+        nameEl, damageBar, damageText, statusEl, panel
       })
     }
-    this.container.appendChild(hudRow)
 
     // Controls bar
     const bar = document.createElement('div')
@@ -437,6 +448,12 @@ export class ControlsPanel {
       this.frameIndex = parseInt(this.scrubber.value)
       if (this.frames.length > 0) {
         this.updateHUD(this.frames[this.frameIndex])
+        // Show/hide result banner based on scrubber position
+        if (this.frameIndex >= this.frames.length - 1) {
+          this.updateResultBanner()
+        } else {
+          this.resultBanner.style.display = 'none'
+        }
       }
     })
     bar.appendChild(this.scrubber)
@@ -527,9 +544,7 @@ export class ControlsPanel {
       const hud = this.hudPanels[i]
       const health = Math.max(0, 100 - r.damage)
       hud.damageBar.style.width = health + '%'
-      hud.damageText.textContent = `DMG:${r.damage}%`
-      hud.speedEl.textContent = `SPD:${r.speed}`
-      hud.headingEl.textContent = `HDG:${r.heading}\u00B0`
+      hud.damageText.textContent = `${r.damage}%`
 
       if (r.status === 0) {
         hud.statusEl.textContent = 'DEAD'
