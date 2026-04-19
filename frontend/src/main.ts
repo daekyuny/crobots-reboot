@@ -1,7 +1,7 @@
 import { BattleScene } from './renderer/BattleScene'
-import { UploadPanel } from './ui/UploadPanel'
+import { UploadPanel, type StallConfig } from './ui/UploadPanel'
 import { ControlsPanel } from './ui/ControlsPanel'
-import { compileRobot, runBattle, setTeam, setTeamMode } from './engine/wasm-bridge'
+import { compileRobot, runBattle, setTeam, setTeamMode, setStallConfig } from './engine/wasm-bridge'
 import { END_NORMAL } from './engine/types'
 
 const MIN_CANVAS = 600  // minimum square side in CSS pixels
@@ -59,12 +59,20 @@ let lastNumRobots = 0
 let lastNames: string[] = []
 let lastTeamMode = 0
 let lastTeams: number[] = []
+let lastStall: StallConfig = { enabled: false, windowCycles: 10000 }
 
-async function startBattle(numRobots: number, names: string[], teamMode = 0, teams: number[] = []): Promise<void> {
+async function startBattle(
+  numRobots: number,
+  names: string[],
+  teamMode = 0,
+  teams: number[] = [],
+  stall: StallConfig = { enabled: false, windowCycles: 10000 },
+): Promise<void> {
   lastNumRobots = numRobots
   lastNames = names
   lastTeamMode = teamMode
   lastTeams = teams
+  lastStall = stall
 
   // Set team mode and assignments before running
   await setTeamMode(teamMode)
@@ -73,6 +81,7 @@ async function startBattle(numRobots: number, names: string[], teamMode = 0, tea
       await setTeam(i, teams[i] ?? 0)
     }
   }
+  await setStallConfig(stall.enabled, stall.windowCycles)
 
   const { frames, result } = await runBattle(numRobots)
   controls.setFrames(frames, names, result)
@@ -84,10 +93,10 @@ async function startBattle(numRobots: number, names: string[], teamMode = 0, tea
   }
 }
 
-upload.onBattle(async (numRobots: number, names: string[], teamMode: number, teams: number[]) => {
+upload.onBattle(async (numRobots, names, teamMode, teams, stall) => {
   try {
     upload.setStatus('running')
-    await startBattle(numRobots, names, teamMode, teams)
+    await startBattle(numRobots, names, teamMode, teams, stall)
     upload.setStatus('done')
   } catch (e) {
     upload.setStatus('error', String(e))
@@ -96,10 +105,14 @@ upload.onBattle(async (numRobots: number, names: string[], teamMode: number, tea
 
 controls.onRematch(async () => {
   try {
-    await startBattle(lastNumRobots, lastNames, lastTeamMode, lastTeams)
+    await startBattle(lastNumRobots, lastNames, lastTeamMode, lastTeams, lastStall)
   } catch (e) {
     console.error('Rematch failed:', e)
   }
+})
+
+controls.onNewRobots(() => {
+  upload.show()
 })
 
 // Render loop

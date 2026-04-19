@@ -68,6 +68,8 @@ long c_scan()
 
 
   cur_robot->scan = (int) degree;	/* record scan for display */
+  cur_robot->scan_res = (int) res;	/* record scan resolution for display */
+  cur_robot->scan_dist = 0;		/* reset; set below if a hit is found */
 
   /* check other robots for +/- resolution */
   for (i = 0; i < MAXROBOTS; i++) {
@@ -128,6 +130,7 @@ long c_scan()
   if (close_dist == 0L)
     cur_robot->last_scan_is_friend = 0;
 
+  cur_robot->scan_dist = (int) close_dist;
   push((long) close_dist);
 }
 
@@ -363,5 +366,26 @@ long c_friend()
     return;
   }
   push((long) cur_robot->last_scan_is_friend);
+}
+
+
+/* c_idle - do nothing for n cycles; useful for testing robot actions */
+/*          expect one argument: cycles to idle */
+/*          clamps to the configured stall window (default 10000) */
+
+extern int stall_window_cyc;
+
+long c_idle()
+{
+  long cycles;
+
+  cycles = pop();
+  if (cycles < 0L)
+    cycles = 0L;
+  if (cycles > (long) stall_window_cyc)
+    cycles = (long) stall_window_cyc;
+
+  set_stall((int) cycles);
+  push(cycles);
 }
 

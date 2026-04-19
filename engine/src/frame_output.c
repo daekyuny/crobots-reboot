@@ -28,6 +28,8 @@ void record_frame(long cycle) {
         f->robots[i].scan_heading = 0;
         f->robots[i].status = DEAD;
         f->robots[i].team = 0;
+        f->robots[i].scan_res = 0;
+        f->robots[i].scan_dist = 0;
     }
 
     /* Initialize all missile frames */
@@ -49,6 +51,8 @@ void record_frame(long cycle) {
         f->robots[i].scan_heading = robots[i].scan;
         f->robots[i].status  = robots[i].status;
         f->robots[i].team    = robots[i].team;
+        f->robots[i].scan_res  = robots[i].scan_res;
+        f->robots[i].scan_dist = robots[i].scan_dist;
     }
 
     /* Record missile state: 2 missiles per robot */

@@ -10,7 +10,18 @@ interface Slot {
   error: string | null
 }
 
-type BattleCallback = (numRobots: number, names: string[], teamMode: number, teams: number[]) => void
+export interface StallConfig {
+  enabled: boolean
+  windowCycles: number
+}
+
+type BattleCallback = (
+  numRobots: number,
+  names: string[],
+  teamMode: number,
+  teams: number[],
+  stall: StallConfig,
+) => void
 type CompileCallback = (source: string, slot: number) => Promise<void>
 
 export class UploadPanel {
@@ -23,6 +34,8 @@ export class UploadPanel {
   private activeCount = 2
   private teamMode = 0  // 0=FFA, 1=team-safe, 2=team-competitive
   private teamAssignments = [0, 0, 1, 1]  // default: slots 0,1 → Team A; 2,3 → Team B
+  private stallEnabled = false
+  private stallWindow = 10000
   private teamTags: HTMLElement[] = []
   private teamModeRow!: HTMLElement
   private battleCallback: BattleCallback | null = null
@@ -422,6 +435,57 @@ export class UploadPanel {
     }
     this.container.appendChild(this.teamModeRow)
 
+    // Stall limit row — disabled by default; when enabled, battle ends after
+    // `stallWindow` motion cycles with no damage.
+    const stallRow = document.createElement('div')
+    stallRow.className = 'team-mode-row'
+    const stallLabel = document.createElement('label')
+    stallLabel.style.display = 'flex'
+    stallLabel.style.alignItems = 'center'
+    stallLabel.style.gap = '6px'
+    stallLabel.style.cursor = 'pointer'
+    const stallCheck = document.createElement('input')
+    stallCheck.type = 'checkbox'
+    stallCheck.checked = false
+    stallLabel.appendChild(stallCheck)
+    const stallLabelText = document.createElement('span')
+    stallLabelText.textContent = 'Stall Limit'
+    stallLabel.appendChild(stallLabelText)
+    stallRow.appendChild(stallLabel)
+
+    const stallInput = document.createElement('input')
+    stallInput.type = 'number'
+    stallInput.min = '500'
+    stallInput.step = '500'
+    stallInput.value = String(this.stallWindow)
+    stallInput.disabled = true
+    stallInput.style.width = '80px'
+    stallInput.style.background = 'rgba(40, 40, 60, 0.8)'
+    stallInput.style.color = '#ccc'
+    stallInput.style.border = '1px solid rgba(100, 100, 140, 0.3)'
+    stallInput.style.borderRadius = '4px'
+    stallInput.style.padding = '2px 6px'
+    stallInput.style.fontFamily = "'Courier New', monospace"
+    stallInput.style.fontSize = '11px'
+    stallRow.appendChild(stallInput)
+
+    const stallHint = document.createElement('span')
+    stallHint.textContent = 'cycles no damage'
+    stallHint.style.fontSize = '10px'
+    stallHint.style.opacity = '0.6'
+    stallRow.appendChild(stallHint)
+
+    stallCheck.addEventListener('change', () => {
+      this.stallEnabled = stallCheck.checked
+      stallInput.disabled = !stallCheck.checked
+    })
+    stallInput.addEventListener('change', () => {
+      const v = parseInt(stallInput.value, 10)
+      if (!isNaN(v) && v > 0) this.stallWindow = v
+      else stallInput.value = String(this.stallWindow)
+    })
+    this.container.appendChild(stallRow)
+
     const slotsRow = document.createElement('div')
     slotsRow.className = 'upload-slots'
 
@@ -439,7 +503,13 @@ export class UploadPanel {
     this.battleButton.disabled = true
     this.battleButton.onclick = () => {
       const names = this.slots.slice(0, this.activeCount).map(s => s.name!)
-      this.battleCallback?.(this.activeCount, names, this.teamMode, this.teamAssignments.slice(0, this.activeCount))
+      this.battleCallback?.(
+        this.activeCount,
+        names,
+        this.teamMode,
+        this.teamAssignments.slice(0, this.activeCount),
+        { enabled: this.stallEnabled, windowCycles: this.stallWindow },
+      )
     }
     this.container.appendChild(this.battleButton)
 

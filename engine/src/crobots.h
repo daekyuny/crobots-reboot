@@ -48,6 +48,8 @@ struct robot {			/* robot context */
   int last_damage;		/* last damage */
   int scan;			/* current scan direction */
   int last_scan;		/* last scan direction */
+  int scan_res;			/* last scan resolution arg (0-10 degrees) */
+  int scan_dist;		/* last scan detected distance (0 = no hit) */
   int reload;			/* number of cycles between reloading */
   int ext_count;		/* size of external pool needed */
   long *external;		/* external variable pool */
@@ -185,6 +187,7 @@ long c_tan();     /* tan(degree); = tan * 100000 */
 long c_atan();    /* atan(ratio); = degree */
 long c_sqrt();    /* sqrt(x); = square root */
 long c_friend();  /* friend(); = 1 if last scan hit was teammate */
+long c_idle();    /* idle(cycles); do nothing for n cycles (for testing) */
 
 /* declare instrinsic function table */
 #ifndef INIT
@@ -212,6 +215,7 @@ struct intrin {
   {"atan",	c_atan},
   {"sqrt",	c_sqrt},
   {"friend",	c_friend},
+  {"idle",	c_idle},
   {"",		(long (*)()) 0}
  }
 #endif
@@ -242,6 +246,8 @@ typedef struct {
     int scan_heading;
     int status;         /* ACTIVE=1, DEAD=0 */
     int team;           /* team id for this robot */
+    int scan_res;       /* scan resolution used this frame (0-10 deg) */
+    int scan_dist;      /* scan detected distance in meters (0 = no hit) */
 } RobotFrame;
 
 typedef struct {

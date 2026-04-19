@@ -205,6 +205,16 @@ void set_team_mode(int mode) {
 }
 
 
+extern int stall_enabled;
+extern int stall_window_cyc;
+
+EMSCRIPTEN_KEEPALIVE
+void set_stall_config(int enabled, int window_cycles) {
+    stall_enabled = enabled ? 1 : 0;
+    if (window_cycles > 0) stall_window_cyc = window_cycles;
+}
+
+
 EMSCRIPTEN_KEEPALIVE
 int get_battle_is_team(void) {
     return battle_is_team;

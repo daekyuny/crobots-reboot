@@ -17,6 +17,8 @@ export interface RobotFrame {
   scanHeading: number;
   status: number;
   team: number;
+  scanRes: number;   // scan resolution (0–10 deg) used this frame
+  scanDist: number;  // detected distance (0 = no hit); meters
 }
 
 export interface MissileFrame {

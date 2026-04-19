@@ -6,6 +6,7 @@ declare const self: DedicatedWorkerGlobalScope
 interface RobotFrame {
   x: number; y: number; heading: number; speed: number;
   damage: number; scanHeading: number; status: number; team: number;
+  scanRes: number; scanDist: number;
 }
 
 interface MissileFrame {
@@ -60,7 +61,7 @@ function parseFrames(mod: any, count: number, ptr: number, frameSize: number): F
 
     const robots: RobotFrame[] = []
     for (let r = 0; r < 4; r++) {
-      const rb = base + 1 + r * 8
+      const rb = base + 1 + r * 10
       robots.push({
         x:           heap[rb + 0],
         y:           heap[rb + 1],
@@ -70,12 +71,14 @@ function parseFrames(mod: any, count: number, ptr: number, frameSize: number): F
         scanHeading: heap[rb + 5],
         status:      heap[rb + 6],
         team:        heap[rb + 7],
+        scanRes:     heap[rb + 8],
+        scanDist:    heap[rb + 9],
       })
     }
 
     const missiles: MissileFrame[] = []
     for (let m = 0; m < 8; m++) {
-      const mb = base + 33 + m * 5
+      const mb = base + 41 + m * 5
       missiles.push({
         x:       heap[mb + 0],
         y:       heap[mb + 1],
@@ -115,6 +118,11 @@ self.onmessage = async (e: MessageEvent) => {
       const { mode } = e.data
       Module._set_team_mode(mode)
       self.postMessage({ type: 'set_team_mode_result' })
+
+    } else if (type === 'set_stall_config') {
+      const { enabled, windowCycles } = e.data
+      Module._set_stall_config(enabled ? 1 : 0, windowCycles | 0)
+      self.postMessage({ type: 'set_stall_config_result' })
 
     } else if (type === 'run') {
       const { numRobots } = e.data

@@ -145,8 +145,9 @@ export class BattleScene {
 
       if (justExploded) {
         const ownerColor = ROBOT_COLORS[missile.owner] ?? 0xffffff;
+        // Engine y → world Z = 1000 - y (match RobotMesh / MissileMesh mapping).
         this.explosions.push(
-          new ExplosionFX(missile.x, missile.y, ownerColor, this.scene)
+          new ExplosionFX(missile.x, 1000 - missile.y, ownerColor, this.scene)
         );
       }
     }

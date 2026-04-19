@@ -9,11 +9,12 @@ export class ControlsPanel {
   private robotNames: string[] = []
   private frameIndex = 0
   private playing = false
-  private speed = 1  // frames to advance per tick
+  private speed = 0.5  // frames to advance per tick
   private accumulator = 0
 
   private battleResult: BattleResult | null = null
   private rematchCallback: (() => void) | null = null
+  private newRobotsCallback: (() => void) | null = null
 
   private container!: HTMLElement
   private resultBanner!: HTMLElement
@@ -22,6 +23,8 @@ export class ControlsPanel {
   private frameDisplay!: HTMLElement
   private playBtn!: HTMLButtonElement
   private rematchBtn!: HTMLButtonElement
+  private newRobotsBtn!: HTMLButtonElement
+  private endGameBtn!: HTMLButtonElement
   private speedBtns: HTMLButtonElement[] = []
   private hudContainer!: HTMLElement
   private hudPanels: {
@@ -42,6 +45,10 @@ export class ControlsPanel {
     this.rematchCallback = cb
   }
 
+  onNewRobots(cb: () => void): void {
+    this.newRobotsCallback = cb
+  }
+
   setFrames(frames: Frame[], robotNames: string[], result?: BattleResult): void {
     this.frames = frames
     this.robotNames = robotNames
@@ -53,6 +60,7 @@ export class ControlsPanel {
     this.container.style.display = 'flex'
     this.rematchBtn.disabled = false
     this.rematchBtn.textContent = 'Rematch'
+    this.endGameBtn.disabled = false
 
     // Detect team mode from result
     this.isTeamMode = !!(result && result.isTeam)
@@ -183,6 +191,59 @@ export class ControlsPanel {
     return frame
   }
 
+  /** Manually declare a stall at the current replay position. Recomputes the
+   *  winner from the current frame's damage, truncates playback, shows banner. */
+  private endGameAtCurrentFrame(): void {
+    if (this.frames.length === 0) return
+    const idx = this.frameIndex
+    const frame = this.frames[idx]
+
+    // Truncate effective playback to [0..idx]
+    this.frames = this.frames.slice(0, idx + 1)
+    this.scrubber.max = String(this.frames.length - 1)
+
+    // Recompute winner at this moment using the same rule as an engine stall:
+    // least damage wins; team mode totals per team.
+    const live = frame.robots
+      .map((r, i) => ({ r, i }))
+      .filter(({ r, i }) => i < this.robotNames.length && r.status !== 0)
+
+    let winner = -1
+    if (this.isTeamMode) {
+      const totals: Record<number, number> = { 0: 0, 1: 0 }
+      const alive: Record<number, number> = { 0: 0, 1: 0 }
+      for (const { r } of live) {
+        totals[r.team] = (totals[r.team] ?? 0) + r.damage
+        alive[r.team] = (alive[r.team] ?? 0) + 1
+      }
+      if (alive[0] && !alive[1]) winner = 0
+      else if (alive[1] && !alive[0]) winner = 1
+      else if (totals[0] < totals[1]) winner = 0
+      else if (totals[1] < totals[0]) winner = 1
+      else winner = -1
+    } else if (live.length > 0) {
+      let min = Infinity
+      let ties = 0
+      for (const { r, i } of live) {
+        if (r.damage < min) { min = r.damage; winner = i; ties = 1 }
+        else if (r.damage === min) { ties++ }
+      }
+      if (ties > 1) winner = -1
+    }
+
+    this.battleResult = {
+      endReason: END_STALL,
+      winner,
+      isTeam: this.isTeamMode,
+    }
+
+    this.pause()
+    this.endGameBtn.disabled = true
+    this.rematchBtn.disabled = false
+    this.rematchBtn.textContent = 'Rematch'
+    this.updateResultBanner()
+  }
+
   render(): HTMLElement {
     const style = document.createElement('style')
     style.textContent = `
@@ -252,7 +313,7 @@ export class ControlsPanel {
         border: none;
         cursor: pointer;
       }
-      .cycle-display, .frame-display {
+      .frame-display {
         font-size: 13px;
         color: #888;
         white-space: nowrap;
@@ -269,21 +330,69 @@ export class ControlsPanel {
       .hud-overlay {
         display: none;
         flex-direction: column;
-        gap: 6px;
-        position: absolute;
-        top: 10px;
-        right: 10px;
+        gap: 14px;
+        position: fixed;
+        top: 12px;
+        right: 28px;
+        width: 150px;
         z-index: 20;
         pointer-events: none;
       }
-      .robot-hud {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 4px 10px;
+      .hud-cycle {
+        margin-top: 4px;
+        padding: 6px 10px;
         background: rgba(10, 10, 20, 0.8);
         border: 1px solid rgba(60, 60, 80, 0.4);
         border-radius: 4px;
+        font-size: 11px;
+        color: #aaa;
+        letter-spacing: 1px;
+      }
+      .hud-cycle .label {
+        color: #666;
+        margin-right: 6px;
+      }
+      .hud-cycle .value {
+        color: #eee;
+        font-weight: bold;
+      }
+      .hud-end-btn {
+        margin-top: 6px;
+        padding: 6px 10px;
+        background: rgba(140, 40, 40, 0.18);
+        color: #ff8080;
+        border: 1px solid rgba(255, 80, 80, 0.4);
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        cursor: pointer;
+        pointer-events: auto;
+        transition: background 0.15s;
+      }
+      .hud-end-btn:hover:not(:disabled) {
+        background: rgba(200, 60, 60, 0.35);
+      }
+      .hud-end-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .robot-hud {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 6px 10px;
+        background: rgba(10, 10, 20, 0.8);
+        border: 1px solid rgba(60, 60, 80, 0.4);
+        border-radius: 4px;
+      }
+      .hud-name-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
       }
       .hud-color {
         width: 8px;
@@ -294,15 +403,22 @@ export class ControlsPanel {
       .hud-name {
         font-size: 12px;
         font-weight: bold;
-        min-width: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .hud-status-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
       }
       .hud-damage-bar-bg {
-        width: 50px;
-        height: 6px;
+        flex: 1;
+        height: 5px;
         background: rgba(60, 60, 80, 0.6);
         border-radius: 3px;
         overflow: hidden;
-        flex-shrink: 0;
       }
       .hud-damage-bar {
         height: 100%;
@@ -311,9 +427,11 @@ export class ControlsPanel {
         border-radius: 3px;
       }
       .hud-stat {
-        font-size: 11px;
-        color: #888;
+        font-size: 10px;
+        color: #aaa;
         white-space: nowrap;
+        min-width: 32px;
+        text-align: right;
       }
       .hud-status {
         font-size: 10px;
@@ -349,6 +467,22 @@ export class ControlsPanel {
         opacity: 0.35;
         cursor: not-allowed;
       }
+      .new-robots-btn {
+        font-size: 11px !important;
+        padding: 4px 12px !important;
+        background: rgba(200, 120, 0, 0.15) !important;
+        border-color: #c87800 !important;
+        color: #ffa040 !important;
+        letter-spacing: 1px;
+        font-weight: bold;
+      }
+      .new-robots-btn:hover:not(:disabled) {
+        background: rgba(200, 120, 0, 0.3) !important;
+      }
+      .new-robots-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
       .result-banner {
         display: none;
         padding: 5px 16px;
@@ -379,16 +513,26 @@ export class ControlsPanel {
       panel.className = 'robot-hud'
       panel.style.display = 'none'
 
+      // Top row: color dot + name
+      const nameRow = document.createElement('div')
+      nameRow.className = 'hud-name-row'
+
       const colorDot = document.createElement('div')
       colorDot.className = 'hud-color'
       colorDot.style.backgroundColor = ROBOT_COLORS[i]
       colorDot.style.boxShadow = `0 0 6px ${ROBOT_COLORS[i]}`
-      panel.appendChild(colorDot)
+      nameRow.appendChild(colorDot)
 
       const nameEl = document.createElement('div')
       nameEl.className = 'hud-name'
       nameEl.style.color = ROBOT_COLORS[i]
-      panel.appendChild(nameEl)
+      nameRow.appendChild(nameEl)
+
+      panel.appendChild(nameRow)
+
+      // Bottom row: damage bar + %, then status
+      const statusRow = document.createElement('div')
+      statusRow.className = 'hud-status-row'
 
       const damageBarBg = document.createElement('div')
       damageBarBg.className = 'hud-damage-bar-bg'
@@ -397,17 +541,19 @@ export class ControlsPanel {
       damageBar.style.width = '100%'
       damageBar.style.background = ROBOT_COLORS[i]
       damageBarBg.appendChild(damageBar)
-      panel.appendChild(damageBarBg)
+      statusRow.appendChild(damageBarBg)
 
       const damageText = document.createElement('div')
       damageText.className = 'hud-stat'
       damageText.textContent = '0%'
-      panel.appendChild(damageText)
+      statusRow.appendChild(damageText)
 
       const statusEl = document.createElement('div')
       statusEl.className = 'hud-status active'
       statusEl.textContent = 'ACTIVE'
-      panel.appendChild(statusEl)
+      statusRow.appendChild(statusEl)
+
+      panel.appendChild(statusRow)
 
       this.hudContainer.appendChild(panel)
 
@@ -415,6 +561,20 @@ export class ControlsPanel {
         nameEl, damageBar, damageText, statusEl, panel
       })
     }
+
+    // Cycle readout below the robot cards
+    this.cycleDisplay = document.createElement('div')
+    this.cycleDisplay.className = 'hud-cycle'
+    this.cycleDisplay.innerHTML = '<span class="label">CYCLE</span><span class="value">0</span>'
+    this.hudContainer.appendChild(this.cycleDisplay)
+
+    // End-game button — manually declare a stall at the current replay position
+    this.endGameBtn = document.createElement('button')
+    this.endGameBtn.className = 'hud-end-btn'
+    this.endGameBtn.textContent = 'End Game'
+    this.endGameBtn.title = 'Declare a stall at the current frame'
+    this.endGameBtn.onclick = () => this.endGameAtCurrentFrame()
+    this.hudContainer.appendChild(this.endGameBtn)
 
     // Controls bar
     const bar = document.createElement('div')
@@ -458,12 +618,6 @@ export class ControlsPanel {
     })
     bar.appendChild(this.scrubber)
 
-    // Cycle display
-    this.cycleDisplay = document.createElement('div')
-    this.cycleDisplay.className = 'cycle-display'
-    this.cycleDisplay.textContent = 'Cycle: 0'
-    bar.appendChild(this.cycleDisplay)
-
     // Frame display
     this.frameDisplay = document.createElement('div')
     this.frameDisplay.className = 'frame-display'
@@ -475,7 +629,7 @@ export class ControlsPanel {
     speedGroup.className = 'speed-group'
     for (const spd of SPEEDS) {
       const btn = document.createElement('button')
-      btn.className = 'speed-btn' + (spd === 1 ? ' active' : '')
+      btn.className = 'speed-btn' + (spd === 0.5 ? ' active' : '')
       btn.textContent = spd + 'x'
       btn.onclick = () => {
         this.speed = spd
@@ -529,12 +683,23 @@ export class ControlsPanel {
     }
     bar.appendChild(this.rematchBtn)
 
+    // New Robots button — reopens the upload panel to pick different robots
+    this.newRobotsBtn = document.createElement('button')
+    this.newRobotsBtn.className = 'new-robots-btn'
+    this.newRobotsBtn.textContent = 'New Game'
+    this.newRobotsBtn.title = 'Configure a new match with different robots'
+    this.newRobotsBtn.onclick = () => {
+      this.newRobotsCallback?.()
+    }
+    bar.appendChild(this.newRobotsBtn)
+
     this.container.appendChild(bar)
     return this.container
   }
 
   private updateHUD(frame: Frame): void {
-    this.cycleDisplay.textContent = `Cycle: ${frame.cycle.toLocaleString()}`
+    const cycleValue = this.cycleDisplay.querySelector('.value')
+    if (cycleValue) cycleValue.textContent = frame.cycle.toLocaleString()
     this.frameDisplay.textContent = `${this.frameIndex + 1} / ${this.frames.length}`
 
     for (let i = 0; i < this.robotNames.length; i++) {

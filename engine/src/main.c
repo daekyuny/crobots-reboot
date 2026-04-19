@@ -101,6 +101,8 @@ void init_robot(int i)
   robots[i].last_damage = -1;
   robots[i].scan = 0;
   robots[i].last_scan = -1;
+  robots[i].scan_res = 0;
+  robots[i].scan_dist = 0;
   robots[i].reload = 0;
   robots[i].stall_cycles = 0;
   robots[i].team = 0;
@@ -162,6 +164,10 @@ int robot_stat(int i)
 /* battle_result - outcome of the most recent battle */
 int battle_end_reason = END_NORMAL;
 int battle_winner     = -1;   /* robot index, or -1 for draw */
+
+/* stall configuration — runtime-settable; default off (battles run to CYCLE_LIMIT) */
+int stall_enabled     = 0;    /* 0 = disabled, 1 = enabled */
+int stall_window_cyc  = 10000; /* motion cycles with no damage before declaring stall */
 
 
 /* compute_battle_result - determine end_reason and winner after battle loop */
@@ -320,8 +326,9 @@ void run_battle_wasm(int n)
         }
       }
 
-      /* stall detection: reset counter if any damage occurred this motion cycle */
-      {
+      /* stall detection: reset counter if any damage occurred this motion cycle.
+         Only active when stall_enabled is set; threshold is stall_window_cyc. */
+      if (stall_enabled) {
         int damage_total = 0;
         for (i = 0; i < n; i++)
           damage_total += robots[i].damage;
@@ -329,7 +336,7 @@ void run_battle_wasm(int n)
           last_damage_total = damage_total;
           stall_counter = 0;
         } else {
-          if (++stall_counter >= STALL_WINDOW) {
+          if (++stall_counter >= stall_window_cyc) {
             stall_detected = 1;
             break;
           }

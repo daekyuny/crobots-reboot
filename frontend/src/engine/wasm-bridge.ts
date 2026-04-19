@@ -26,7 +26,11 @@ function getWorker(): Worker {
         else resolve?.(undefined)
       } else if (type === 'complete') {
         resolve?.({ frames: e.data.frames, result: e.data.result })
-      } else if (type === 'set_team_result' || type === 'set_team_mode_result') {
+      } else if (
+        type === 'set_team_result' ||
+        type === 'set_team_mode_result' ||
+        type === 'set_stall_config_result'
+      ) {
         resolve?.(undefined)
       } else if (type === 'error') {
         reject?.(new Error(e.data.error))
@@ -63,6 +67,12 @@ export function setTeam(slot: number, team: number): Promise<void> {
 /** Set team mode: 0=FFA, 1=team-safe (no friendly fire), 2=team-competitive. */
 export function setTeamMode(mode: number): Promise<void> {
   return send<void>({ type: 'set_team_mode', mode })
+}
+
+/** Configure stall detection. Disabled by default; when enabled, the battle ends after
+ *  `windowCycles` motion cycles with no damage. */
+export function setStallConfig(enabled: boolean, windowCycles: number): Promise<void> {
+  return send<void>({ type: 'set_stall_config', enabled, windowCycles })
 }
 
 /** Run a battle with already-compiled robots. Returns frames and battle result. */

@@ -72,12 +72,13 @@ export class MissileMesh {
 
     this.group.visible = true;
 
-    // Position: crobots (x, y) -> Three.js (x, 2, y)
-    this.sphere.position.set(missile.x, 2, missile.y);
+    // Engine (x, y) → Three.js (x, 2, 1000 - y); see RobotMesh.update for rationale.
+    const worldZ = 1000 - missile.y;
+    this.sphere.position.set(missile.x, 2, worldZ);
 
     if (missile.status === 1) {
       // FLYING: update trail
-      this.trail.push(new THREE.Vector3(missile.x, 2, missile.y));
+      this.trail.push(new THREE.Vector3(missile.x, 2, worldZ));
       if (this.trail.length > this.TRAIL_LENGTH) {
         this.trail.shift();
       }

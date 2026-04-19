@@ -7,6 +7,8 @@ export interface RobotFrame {
   scanHeading: number;
   status: number;
   team: number;
+  scanRes: number;
+  scanDist: number;
 }
 
 export interface MissileFrame {
